@@ -4,6 +4,7 @@ from typing import Any
 
 from .config import settings
 from .context_budget import ContextBudgetManager
+from .utils import cap_query, join_nonempty
 from .zep_common import prime_eval_thread, render_graph_search
 
 
@@ -19,34 +20,64 @@ class StudentMemory:
     # `cap_query(query)` (see src/utils.py) before passing it to graph.search.
 
     def retrieve_long_term(self, user_id: str, thread_id: str, query: str) -> str:
-        # LAB TODO 1/4
-        # 1) prime_eval_thread(...) has already been provided as scaffolding.
-        # 2) call thread.get_user_context(thread_id=...)
-        # 3) return the .context string.
-        # Bonus: append graph.search(scope="edges", limit>=20) facts with
-        #        validity ranges (a low limit can miss deadline/open-loop facts).
+        """Long-term retrieval using Zep Context Block + edges fact search."""
+        # 1) Prime eval thread with current query for context relevance
         prime_eval_thread(self.client, user_id, thread_id, query)
-        raise NotImplementedError("LAB TODO: implement long-term retrieval with Zep Context Block")
+
+        # 2) Get Context Block (user graph summary + relevant facts)
+        user_context = self.client.thread.get_user_context(thread_id=thread_id)
+        context_block = getattr(user_context, "context", "") or ""
+
+        # 3) Append edges fact search for recency/conflict transparency
+        #    High limit (20+) to capture deadline/open-loop facts
+        try:
+            facts = self.client.graph.search(
+                user_id=user_id,
+                query=cap_query(query),
+                scope="edges",
+                limit=20,
+            )
+            fact_text = render_graph_search(facts)
+        except Exception:
+            fact_text = ""
+
+        return join_nonempty([context_block, fact_text], sep="\n\n")
 
     def retrieve_episodic(self, user_id: str, query: str) -> str:
-        # LAB TODO 2/4
-        # Use client.graph.search(user_id=..., query=cap_query(query),
-        #     scope="episodes", limit=...) then render_graph_search(...).
-        # Tip: verbose session episodes can crowd out concise, marker-bearing
-        # reflections under the tight episodic budget — render_graph_search
-        # accepts an `episode_char_cap` to keep more distinct episodes.
-        raise NotImplementedError("LAB TODO: implement episodic search")
+        """Episodic memory: search user graph for session trajectories/outcomes."""
+        results = self.client.graph.search(
+            user_id=user_id,
+            query=cap_query(query),
+            scope="episodes",
+            limit=15,
+        )
+        # episode_char_cap keeps more distinct episodes within tight budget
+        return render_graph_search(results, episode_char_cap=180)
 
     def retrieve_semantic(self, graph_id: str, query: str) -> str:
-        # LAB TODO 3/4
-        # Search the standalone graph (graph_id, NOT user_id).
-        # Recommended: scope="episodes" — it returns raw document text that keeps
-        # literal markers (e.g. PAYMENT-RULE-3). The "auto" scope returns
-        # extracted facts that DROP those literal codes, so avoid it here.
-        # Fallback: scope="nodes".
-        raise NotImplementedError("LAB TODO: implement semantic graph search")
+        """Semantic memory: search standalone domain knowledge graph."""
+        q = cap_query(query)
+        try:
+            # scope="episodes" returns raw document text preserving literal markers
+            results = self.client.graph.search(
+                graph_id=graph_id,
+                query=q,
+                scope="episodes",
+                limit=8,
+            )
+        except Exception:
+            # Fallback to nodes if episodes scope unavailable
+            results = self.client.graph.search(
+                graph_id=graph_id,
+                query=q,
+                scope="nodes",
+                limit=8,
+            )
+        return render_graph_search(results)
 
     def assemble_context(self, layers: dict[str, str]) -> tuple[str, dict[str, dict[str, int]]]:
-        # LAB TODO 4/4
-        # Use ContextBudgetManager to enforce 10/4/3/3 budget and priority order.
-        raise NotImplementedError("LAB TODO: assemble/trim memory context")
+        """Assemble and trim memory layers using budget manager (10/4/3/3)."""
+        # Delegate to ContextBudgetManager which enforces:
+        # - Budget: short_term=10%, long_term=4%, episodic=3%, semantic=3%
+        # - Priority order: short_term > long_term > episodic > semantic
+        return self.budget.assemble(layers)

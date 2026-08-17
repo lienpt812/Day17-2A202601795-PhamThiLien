@@ -1,0 +1,1576 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Agent | Lab 17</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --surface-2: #f1f5f9;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --text-dim: #64748b;
+            --accent: #0891b2;
+            --accent-light: #e0f7fa;
+            --accent-glow: rgba(8, 145, 178, 0.15);
+            --purple: #9333ea;
+            --purple-light: #f3e8ff;
+            --blue: #2563eb;
+            --blue-light: #dbeafe;
+            --amber: #d97706;
+            --amber-light: #fef3c7;
+            --rose: #e11d48;
+            --rose-light: #ffe4e6;
+            --green: #059669;
+            --green-light: #d1fae5;
+        }
+
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        /* Layout */
+        .app {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            grid-template-rows: auto 1fr;
+            min-height: 100vh;
+            gap: 1px;
+            background: var(--border);
+        }
+
+        /* Header */
+        .header {
+            grid-column: 1 / -1;
+            background: var(--surface);
+            padding: 20px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .logo-icon {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, var(--accent), #0e7490);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 12px rgba(8, 145, 178, 0.3);
+        }
+
+        .logo-text h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .logo-text span {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-family: inherit;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(8, 145, 178, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: #0e7490;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(8, 145, 178, 0.4);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-dim);
+            border: 1px solid var(--border);
+        }
+
+        .btn-ghost:hover {
+            background: var(--surface-2);
+            color: var(--text);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: var(--surface);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            overflow-y: auto;
+        }
+
+        .section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        /* Case Cards */
+        .case-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .case-card {
+            padding: 16px;
+            background: var(--surface-2);
+            border: 1px solid transparent;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .case-card:hover {
+            border-color: var(--border);
+            background: var(--surface);
+            transform: translateX(4px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .case-card.active {
+            border-color: var(--accent);
+            background: var(--accent-light);
+        }
+
+        .case-card.golden {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border-color: #f59e0b;
+        }
+
+        .case-card.golden:hover {
+            background: linear-gradient(135deg, #fde68a, #fcd34d);
+        }
+
+        .case-card.golden.active {
+            background: linear-gradient(135deg, #fde68a, #fbbf24);
+        }
+
+        .case-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .case-id {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .case-card.golden .case-id {
+            color: #b45309;
+        }
+
+        .case-layer {
+            font-size: 0.65rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .case-card.golden .case-layer {
+            background: rgba(180, 83, 9, 0.15);
+            color: #b45309;
+        }
+
+        .case-layer.short_term { background: var(--blue-light); color: var(--blue); }
+        .case-layer.long_term { background: var(--green-light); color: var(--green); }
+        .case-layer.episodic { background: var(--amber-light); color: var(--amber); }
+        .case-layer.semantic { background: var(--purple-light); color: var(--purple); }
+        .case-layer.mixed { background: var(--rose-light); color: var(--rose); }
+
+        .case-query {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Layer Toggles */
+        .layer-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .layer-toggle {
+            position: relative;
+            padding: 14px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            overflow: hidden;
+        }
+
+        .layer-toggle::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 3px;
+            height: 100%;
+            transition: all 0.2s;
+        }
+
+        .layer-toggle[data-layer="short_term"]::before { background: var(--blue); }
+        .layer-toggle[data-layer="long_term"]::before { background: var(--green); }
+        .layer-toggle[data-layer="episodic"]::before { background: var(--amber); }
+        .layer-toggle[data-layer="semantic"]::before { background: var(--purple); }
+
+        .layer-toggle:hover {
+            border-color: #cbd5e1;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .layer-toggle.active {
+            border-color: transparent;
+        }
+
+        .layer-toggle.active[data-layer="short_term"] { background: var(--blue-light); }
+        .layer-toggle.active[data-layer="long_term"] { background: var(--green-light); }
+        .layer-toggle.active[data-layer="episodic"] { background: var(--amber-light); }
+        .layer-toggle.active[data-layer="semantic"] { background: var(--purple-light); }
+
+        .layer-name {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .layer-icon {
+            font-size: 1rem;
+        }
+
+        .layer-budget {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            margin-top: 6px;
+        }
+
+        .toggle-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--border);
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            transition: all 0.2s;
+        }
+
+        .layer-toggle.active .toggle-dot {
+            background: var(--accent);
+            box-shadow: 0 0 8px rgba(8, 145, 178, 0.4);
+        }
+
+        /* Main Content */
+        .main {
+            background: var(--bg);
+            padding: 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            overflow-y: auto;
+        }
+
+        /* Query Display */
+        .query-card {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 28px;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .query-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .query-case {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .query-badge {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            padding: 8px 16px;
+            background: var(--accent);
+            color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(8, 145, 178, 0.3);
+        }
+
+        .query-meta {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+
+        .query-text {
+            font-size: 1.15rem;
+            line-height: 1.6;
+            color: var(--text);
+            padding: 20px;
+            background: var(--surface-2);
+            border-radius: 10px;
+            border-left: 3px solid var(--accent);
+        }
+
+        .query-evidence {
+            margin-top: 20px;
+        }
+
+        .evidence-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            margin-bottom: 10px;
+        }
+
+        .evidence-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .evidence-tag {
+            font-family: 'Space Grotesk', monospace;
+            font-size: 0.75rem;
+            padding: 6px 12px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+
+        .evidence-tag.required {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: var(--accent-light);
+        }
+
+        .evidence-tag.forbidden {
+            border-color: var(--rose);
+            color: var(--rose);
+            background: var(--rose-light);
+            text-decoration: line-through;
+        }
+
+        /* Run Button */
+        .run-section {
+            display: flex;
+            justify-content: center;
+            padding: 8px 0;
+        }
+
+        .run-btn {
+            padding: 16px 48px;
+            font-size: 1rem;
+            font-weight: 600;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 4px 12px rgba(8, 145, 178, 0.3);
+        }
+
+        .run-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(8, 145, 178, 0.4);
+        }
+
+        .run-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .run-btn.loading .btn-text { display: none; }
+        .run-btn .spinner { display: none; }
+        .run-btn.loading .spinner {
+            display: block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Results */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        .token-card {
+            background: var(--surface);
+            border-radius: 14px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .token-card[data-layer="short_term"] { border-color: var(--blue); }
+        .token-card[data-layer="long_term"] { border-color: var(--green); }
+        .token-card[data-layer="episodic"] { border-color: var(--amber); }
+        .token-card[data-layer="semantic"] { border-color: var(--purple); }
+
+        .token-icon {
+            font-size: 1.5rem;
+            margin-bottom: 12px;
+        }
+
+        .token-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .token-card[data-layer="short_term"] .token-value { color: var(--blue); }
+        .token-card[data-layer="long_term"] .token-value { color: var(--green); }
+        .token-card[data-layer="episodic"] .token-value { color: var(--amber); }
+        .token-card[data-layer="semantic"] .token-value { color: var(--purple); }
+
+        .token-label {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        .token-bar {
+            height: 6px;
+            background: var(--surface-2);
+            border-radius: 3px;
+            margin-top: 12px;
+            overflow: hidden;
+        }
+
+        .token-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        .token-card[data-layer="short_term"] .token-fill { background: var(--blue); }
+        .token-card[data-layer="long_term"] .token-fill { background: var(--green); }
+        .token-card[data-layer="episodic"] .token-fill { background: var(--amber); }
+        .token-card[data-layer="semantic"] .token-fill { background: var(--purple); }
+
+        .token-limit {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            margin-top: 8px;
+        }
+
+        /* Evidence Tabs */
+        .evidence-section {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .evidence-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .evidence-tab {
+            padding: 10px 20px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .evidence-tab:hover {
+            background: var(--surface);
+            color: var(--text);
+            border-color: #cbd5e1;
+        }
+
+        .evidence-tab.active {
+            background: var(--accent-light);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .evidence-box {
+            background: var(--surface-2);
+            border-radius: 12px;
+            padding: 20px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.7;
+            white-space: pre-wrap;
+            max-height: 350px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+        }
+
+        .marker {
+            background: linear-gradient(90deg, var(--accent-light), rgba(8, 145, 178, 0.1));
+            color: var(--accent);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        /* Merged Context */
+        .merged-section {
+            background: linear-gradient(135deg, var(--accent-light), var(--purple-light));
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid rgba(8, 145, 178, 0.2);
+        }
+
+        .merged-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .merged-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .merged-content {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 20px;
+            font-size: 0.85rem;
+            line-height: 1.7;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+        }
+
+        /* Empty State */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 80px 40px;
+            text-align: center;
+            background: var(--surface);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+        }
+
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 24px;
+            opacity: 0.4;
+        }
+
+        .empty-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .empty-desc {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            max-width: 320px;
+        }
+
+        /* Loading */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(248, 250, 252, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .loading-content {
+            text-align: center;
+        }
+
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        .loading-text {
+            font-size: 1rem;
+            color: var(--text-dim);
+        }
+
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 200;
+        }
+
+        .toast {
+            padding: 14px 20px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(50px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .toast.success { border-color: var(--green); }
+        .toast.error { border-color: var(--rose); }
+
+        .toast-icon {
+            font-size: 1.2rem;
+        }
+
+        .toast.success .toast-icon { color: var(--green); }
+        .toast.error .toast-icon { color: var(--rose); }
+
+        /* Hidden */
+        .hidden { display: none !important; }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .app {
+                grid-template-columns: 320px 1fr;
+            }
+            .results-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 900px) {
+            .app {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto 1fr;
+            }
+            .sidebar {
+                border-top: 1px solid var(--border);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">🧠</div>
+                <div class="logo-text">
+                    <h1>Memory Agent</h1>
+                    <span>Lab 17 — Multi-Memory System</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-ghost" onclick="resetState()">
+                    🔄 Reset
+                </button>
+                <button class="btn btn-primary" onclick="runRetrieval()">
+                    ▶️ Run Retrieval
+                </button>
+            </div>
+        </header>
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div>
+                <div class="section-title">Test Cases</div>
+                <div class="case-list" id="caseList"></div>
+            </div>
+
+            <div>
+                <div class="section-title">Memory Layers</div>
+                <div class="layer-grid">
+                    <div class="layer-toggle active" data-layer="short_term" onclick="toggleLayer('short_term')">
+                        <span class="toggle-dot"></span>
+                        <div class="layer-name">
+                            <span class="layer-icon">⚡</span>
+                            Short-term
+                        </div>
+                        <div class="layer-budget">10% · 800 tok</div>
+                    </div>
+                    <div class="layer-toggle active" data-layer="long_term" onclick="toggleLayer('long_term')">
+                        <span class="toggle-dot"></span>
+                        <div class="layer-name">
+                            <span class="layer-icon">🗂️</span>
+                            Long-term
+                        </div>
+                        <div class="layer-budget">4% · 320 tok</div>
+                    </div>
+                    <div class="layer-toggle active" data-layer="episodic" onclick="toggleLayer('episodic')">
+                        <span class="toggle-dot"></span>
+                        <div class="layer-name">
+                            <span class="layer-icon">📜</span>
+                            Episodic
+                        </div>
+                        <div class="layer-budget">3% · 240 tok</div>
+                    </div>
+                    <div class="layer-toggle active" data-layer="semantic" onclick="toggleLayer('semantic')">
+                        <span class="toggle-dot"></span>
+                        <div class="layer-name">
+                            <span class="layer-icon">📚</span>
+                            Semantic
+                        </div>
+                        <div class="layer-budget">3% · 240 tok</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Golden Set Stats -->
+            <div>
+                <div class="section-title">Golden Set Progress</div>
+                <div style="padding: 16px; background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 12px; border: 1px solid #f59e0b;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <span style="font-weight: 600; color: #b45309;">Progress</span>
+                        <span id="goldenProgress" style="font-family: 'Space Grotesk'; font-size: 1.5rem; font-weight: 700; color: #b45309;">0/20</span>
+                    </div>
+                    <div style="height: 8px; background: rgba(180, 83, 9, 0.2); border-radius: 4px; overflow: hidden;">
+                        <div id="goldenBar" style="height: 100%; background: linear-gradient(90deg, #f59e0b, #d97706); width: 0%; transition: width 0.5s;"></div>
+                    </div>
+                    <div style="margin-top: 8px; font-size: 0.75rem; color: #92400e;">
+                        <span id="goldenRate">0%</span> · Target: 20/20 for +10 bonus
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main" id="mainContent">
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState">
+                <div class="empty-icon">🔍</div>
+                <div class="empty-title">Select a Test Case</div>
+                <div class="empty-desc">
+                    Choose a benchmark case from the sidebar to visualize memory retrieval across different layers.
+                </div>
+            </div>
+
+            <!-- Query Card (hidden initially) -->
+            <div class="query-card hidden" id="queryCard">
+                <div class="query-header">
+                    <div class="query-case">
+                        <span class="query-badge" id="queryId">E01</span>
+                        <span class="case-layer" id="queryLayer">short_term</span>
+                    </div>
+                    <div class="query-meta">
+                        <span id="queryUser">minh-lab17</span> · <span id="queryThread">minh-s1</span>
+                    </div>
+                </div>
+                <div class="query-text" id="queryText">
+                    Query will appear here...
+                </div>
+                <div class="query-evidence">
+                    <div class="evidence-label">Expected Evidence</div>
+                    <div class="evidence-tags" id="evidenceTags"></div>
+                </div>
+            </div>
+
+            <!-- Run Button -->
+            <div class="run-section hidden" id="runSection">
+                <button class="run-btn" id="runBtn" onclick="runRetrieval()">
+                    <span class="btn-text">⚡ Run Memory Retrieval</span>
+                    <div class="spinner"></div>
+                </button>
+            </div>
+
+            <!-- Results (hidden initially) -->
+            <div class="hidden" id="resultsContent">
+                <!-- Token Budget -->
+                <div class="results-grid">
+                    <div class="token-card" data-layer="short_term">
+                        <div class="token-icon">⚡</div>
+                        <div class="token-value" id="tok-short_term">0</div>
+                        <div class="token-label">Short-term</div>
+                        <div class="token-bar">
+                            <div class="token-fill" id="bar-short_term" style="width: 0%"></div>
+                        </div>
+                        <div class="token-limit">limit: 800</div>
+                    </div>
+                    <div class="token-card" data-layer="long_term">
+                        <div class="token-icon">🗂️</div>
+                        <div class="token-value" id="tok-long_term">0</div>
+                        <div class="token-label">Long-term</div>
+                        <div class="token-bar">
+                            <div class="token-fill" id="bar-long_term" style="width: 0%"></div>
+                        </div>
+                        <div class="token-limit">limit: 320</div>
+                    </div>
+                    <div class="token-card" data-layer="episodic">
+                        <div class="token-icon">📜</div>
+                        <div class="token-value" id="tok-episodic">0</div>
+                        <div class="token-label">Episodic</div>
+                        <div class="token-bar">
+                            <div class="token-fill" id="bar-episodic" style="width: 0%"></div>
+                        </div>
+                        <div class="token-limit">limit: 240</div>
+                    </div>
+                    <div class="token-card" data-layer="semantic">
+                        <div class="token-icon">📚</div>
+                        <div class="token-value" id="tok-semantic">0</div>
+                        <div class="token-label">Semantic</div>
+                        <div class="token-bar">
+                            <div class="token-fill" id="bar-semantic" style="width: 0%"></div>
+                        </div>
+                        <div class="token-limit">limit: 240</div>
+                    </div>
+                </div>
+
+                <!-- Evidence Tabs -->
+                <div class="evidence-section">
+                    <div class="evidence-tabs" id="evidenceTabs"></div>
+                    <div class="evidence-box" id="evidenceBox">
+                        Run retrieval to see evidence...
+                    </div>
+                </div>
+
+                <!-- Merged Context -->
+                <div class="merged-section">
+                    <div class="merged-header">
+                        <div class="merged-title">
+                            <span>🔗</span>
+                            Merged Context
+                        </div>
+                    </div>
+                    <div class="merged-content" id="mergedContent">
+                        No merged context yet...
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay hidden" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text" id="loadingText">Retrieving from memory...</div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        // ============================================
+        // Data - Practice + Golden Set
+        // ============================================
+        const CASES = [
+            // Practice Set (E01-E11)
+            { id: "E01", layer: "short_term", user: "minh-lab17", thread: "minh-s1", query: "Tên dự án cá nhân tôi vừa nhắc là gì?", must: ["ORCHID-27"], not: [], desc: "Recent in-thread recall" },
+            { id: "E02", layer: "long_term", user: "minh-lab17", thread: "eval-e02", query: "Với demo cá nhân của Minh, ngôn ngữ ưu tiên là gì?", must: ["Python"], not: [], desc: "Cross-session preference" },
+            { id: "E03", layer: "long_term", user: "minh-lab17", thread: "eval-e03", query: "Minh còn deadline nào chưa hoàn thành?", must: ["benchmark report", "16:00"], not: [], desc: "Durable task recall" },
+            { id: "E04", layer: "episodic", user: "minh-lab17", thread: "minh-s2", query: "Lần trước fix async HTTP timeout bằng cách nào?", must: ["ClientSession", "concurrency=20", "ASYNC-FIX-20"], not: [], desc: "Past trajectory" },
+            { id: "E05", layer: "episodic", user: "minh-lab17", thread: "minh-s2", query: "Reflection của sự cố async là gì?", must: ["connection churn", "timeout threshold"], not: [], desc: "Episode reflection" },
+            { id: "E06", layer: "semantic", user: "minh-lab17", thread: "minh-s1", query: "Quy tắc retry POST payment là gì?", must: ["Idempotency-Key", "max-3-retries", "exponential-backoff"], not: [], desc: "Domain knowledge" },
+            { id: "E07", layer: "mixed", user: "minh-lab17", thread: "eval-e07", query: "Hãy viết code retry payment phù hợp với preference của Minh.", must: ["Python", "Idempotency-Key"], not: [], desc: "Mixed layers" },
+            { id: "E08", layer: "long_term", user: "minh-lab17", thread: "eval-e08", query: "Backend BLUEBIRD-42 dùng stack gì?", must: ["BLUEBIRD-42", "TypeScript", "NestJS"], not: [], desc: "Recency/conflict" },
+            { id: "E09", layer: "long_term", user: "lan-lab17", thread: "eval-e09", query: "Lan ưu tiên stack nào cho LOTUS-88?", must: ["LOTUS-88", "Java", "Spring Boot"], not: ["ORCHID-27"], desc: "User isolation" },
+            { id: "E10", layer: "short_term", user: "minh-lab17", thread: "local", query: "Deadline review cũ là khi nào?", must: ["REVIEW-DEADLINE-1600", "Friday", "16:00"], not: [], desc: "Compaction" },
+            { id: "E11", layer: "semantic", user: "minh-lab17", thread: "minh-s2", query: "Theo playbook, trước khi tăng timeout cần kiểm tra gì?", must: ["connection pooling", "CONN-POOL-FIRST"], not: [], desc: "Semantic recall" },
+            // Golden Set (G01-G20)
+            { id: "G01", layer: "short_term", user: "minh-lab17", thread: "local-g01", query: "Trong tất cả constraints đã nhắc, những constraint nào thực sự còn hiệu lực?", must: ["HOLD-ALPHA-0900", "HOLD-BETA-STAGING", "09:00"], not: [], desc: "Harder compaction - 2 durable constraints" },
+            { id: "G02", layer: "short_term", user: "minh-lab17", thread: "minh-s1", query: "Trong thread này, demo cá nhân của Minh tên gì và style giải thích code Minh thích là gì?", must: ["ORCHID-27", "vi du ngan"], not: [], desc: "In-thread recall, paraphrased" },
+            { id: "G03", layer: "long_term", user: "minh-lab17", thread: "eval-g03", query: "Minh thường ưu tiên ngôn ngữ nào khi làm việc một mình, và dự án cá nhân tên là gì?", must: ["Python", "ORCHID-27"], not: ["LOTUS-88"], desc: "Paraphrased preference, no leak" },
+            { id: "G04", layer: "long_term", user: "minh-lab17", thread: "eval-g04", query: "Minh còn việc gì chưa xong, deadline khi nào, và mã open-loop là gì?", must: ["LAB-REPORT-1600", "benchmark report", "16:00"], not: [], desc: "Open-loop recall with marker" },
+            { id: "G05", layer: "long_term", user: "minh-lab17", thread: "eval-g05", query: "Minh thích được giải thích coroutine/Task theo hình thức nào?", must: ["timeline"], not: [], desc: "Teaching style preference" },
+            { id: "G06", layer: "long_term", user: "minh-lab17", thread: "eval-g06", query: "Dự án công ty BLUEBIRD-42 dùng công nghệ gì? Python có được dùng không?", must: ["BLUEBIRD-42", "TypeScript", "NestJS"], not: ["LOTUS-88"], desc: "Scoped recency for company" },
+            { id: "G07", layer: "long_term", user: "minh-lab17", thread: "eval-g07", query: "So sánh stack cá nhân và stack công ty của Minh, kèm tên dự án", must: ["ORCHID-27", "Python", "BLUEBIRD-42", "TypeScript", "NestJS"], not: ["LOTUS-88"], desc: "Both scoped preferences" },
+            { id: "G08", layer: "long_term", user: "lan-lab17", thread: "eval-g08", query: "Lan ơi, sản phẩm của Lan dùng backend gì?", must: ["LOTUS-88", "Java", "Spring Boot"], not: ["ORCHID-27", "BLUEBIRD-42", "ASYNC-FIX-20", "LAB-REPORT-1600"], desc: "Strict user isolation" },
+            { id: "G09", layer: "long_term", user: "minh-lab17", thread: "eval-g09", query: "Liệt kê chính xác dự án backend mà Minh đang sở hữu", must: ["ORCHID-27"], not: ["LOTUS-88", "Spring Boot"], desc: "Reverse isolation" },
+            { id: "G10", layer: "episodic", user: "minh-lab17", thread: "minh-s2", query: "Cách nào thực sự work để fix async HTTP timeout? Bao gồm cả cách thất bại và cách thành công", must: ["ClientSession", "concurrency=20", "ASYNC-FIX-20"], not: [], desc: "Trajectory with failed + working" },
+            { id: "G11", layer: "episodic", user: "minh-lab17", thread: "minh-s2", query: "Root cause thực sự của sự cố async là gì, và mã incident là gì?", must: ["connection churn", "timeout threshold", "ASYNC-FIX-20"], not: [], desc: "Reflection markers + incident id" },
+            { id: "G12", layer: "semantic", user: "minh-lab17", thread: "minh-s1", query: "Xử lý retry payment cho 429/5xx với policy chuẩn, kèm mã marker", must: ["Idempotency-Key", "exponential-backoff", "max-3-retries", "PAYMENT-RULE-3"], not: [], desc: "Payment policy with error classes" },
+            { id: "G13", layer: "semantic", user: "minh-lab17", thread: "minh-s2", query: "Theo playbook incident, trước khi tăng timeout cần kiểm tra gì?", must: ["connection pooling", "CONN-POOL-FIRST"], not: [], desc: "Paraphrased playbook" },
+            { id: "G14", layer: "semantic", user: "lan-lab17", thread: "lan-s1", query: "Quy tắc opt-in cho memory cá nhân và xóa dữ liệu user ra sao?", must: ["opt-in", "DELETE-VERIFY-ALL"], not: [], desc: "Privacy KB (shared graph)" },
+            { id: "G15", layer: "semantic", user: "minh-lab17", thread: "minh-s1", query: "Ty le phan bo token budget cho 4 memory layer trong lab là bao nhiêu?", must: ["BUDGET-10-4-3-3"], not: [], desc: "Context budget KB marker" },
+            { id: "G16", layer: "mixed", user: "minh-lab17", thread: "eval-g16", query: "Viết retry payment cho POST bằng ngôn ngữ Minh thích, theo policy payment", must: ["Python", "Idempotency-Key", "PAYMENT-RULE-3"], not: ["LOTUS-88"], desc: "Personal stack + canonical marker" },
+            { id: "G17", layer: "mixed", user: "minh-lab17", thread: "eval-g17", query: "Retry payment cho backend công ty, dùng stack công ty", must: ["TypeScript", "NestJS", "Idempotency-Key"], not: ["LOTUS-88"], desc: "Company scope + payment policy" },
+            { id: "G18", layer: "mixed", user: "minh-lab17", thread: "eval-g18", query: "Ket hop playbook incident va fix async that su de xu ly su co", must: ["ClientSession", "CONN-POOL-FIRST"], not: [], desc: "Episodic + playbook" },
+            { id: "G19", layer: "mixed", user: "lan-lab17", thread: "eval-g19", query: "Lan ơi, viết retry payment theo stack của Lan", must: ["Java", "Spring Boot", "Idempotency-Key"], not: ["ORCHID-27", "BLUEBIRD-42"], desc: "Lan stack + shared policy" },
+            { id: "G20", layer: "mixed", user: "minh-lab17", thread: "eval-g20", query: "Retry payment theo preference + policy + tranh lap lai loi async", must: ["Python", "Idempotency-Key", "ClientSession"], not: ["LOTUS-88"], desc: "3 layers: long-term + episodic + semantic" }
+        ];
+
+        const LAYER_CONFIG = {
+            short_term: { icon: "⚡", limit: 800, name: "Short-term", desc: "Current conversation" },
+            long_term: { icon: "🗂️", limit: 320, name: "Long-term", desc: "Cross-session facts" },
+            episodic: { icon: "📜", limit: 240, name: "Episodic", desc: "Past trajectories" },
+            semantic: { icon: "📚", limit: 240, name: "Semantic", desc: "Domain knowledge" }
+        };
+
+        const SAMPLE_EVIDENCE = {
+            // Practice Set Evidence
+            E01: {
+                short_term: `[SESSION_SUMMARY]
+- user: Ten du an ca nhan cua toi la ORCHID-27
+- assistant: Da hieu: demo ca nhan ORCHID-27, uu tien Python
+
+[DURABLE_NOTES]
+- user: Ten du an ca nhan cua toi la ORCHID-27. Toi thich Python va khong thich Java.
+
+[RECENT_TURNS]
+- user: Ten du an ca nhan cua toi la ORCHID-27
+- assistant: Da hieu: demo ca nhan ORCHID-27`
+            },
+            E02: {
+                long_term: `[CONTEXT_BLOCK]
+User Minh Nguyen preferences:
+• Prefers Python for personal projects
+• Dislikes Java in examples
+• Likes concise code examples
+
+[EXTRACTED FACTS]
+• Minh prefers Python (confirmed 2026-08-01)
+• ORCHID-27 is a personal project
+• Timeline explanations preferred for async concepts`
+            },
+            E04: {
+                episodic: `[EPISODE minh-s2]
+Date: 2026-08-03
+
+Problem: async HTTP timeout failures
+Attempts:
+  - Increased timeout to 60s → failed
+  - Checked connection pool → partial
+
+Solution:
+  - Reuse aiohttp ClientSession
+  - Set concurrency=20
+
+Reflection:
+  - Root cause was connection churn, NOT timeout threshold
+  - Marker: ASYNC-FIX-20`
+            },
+            E06: {
+                semantic: `[PAYMENT-RETRY-POLICY]
+Document ID: PAYMENT-RULE-3
+
+## Idempotency
+Include Idempotency-Key header in all POST requests:
+  { "Idempotency-Key": "<uuid>" }
+
+## Retry Strategy
+- max-3-retries with exponential-backoff
+- Base delay: 1s, multiplier: 2, max: 30s
+
+## Implementation
+\`\`\`python
+async def retry_post(url, data, retries=3):
+    for i in range(retries):
+        try:
+            return await client.post(url, json=data,
+                headers={"Idempotency-Key": str(uuid4())})
+        except Exception:
+            await asyncio.sleep(min(30, 2**i))
+\`\`\``
+            },
+            // Golden Set Evidence - Full coverage for all markers
+            G01: {
+                short_term: `[SESSION_SUMMARY]
+- Constraint HOLD-ALPHA-0900: standup is 09:00 sharp
+- Constraint HOLD-BETA-STAGING: writes go to staging DB only
+
+[DURABLE_NOTES]
+- user: Constraint HOLD-ALPHA-0900: standup is 09:00 sharp and must not be forgotten.
+- user: Constraint HOLD-BETA-STAGING: writes go to staging DB only.
+
+[RECENT_TURNS]
+- user: Filler A about button padding...
+[2 HOLD constraints preserved through compaction]`
+            },
+            G02: {
+                short_term: `[SESSION_SUMMARY]
+- user: Ten du an ca nhan cua toi la ORCHID-27
+- assistant: Da hieu: demo ca nhan ORCHID-27, uu tien Python
+
+[DURABLE_NOTES]
+- user: Ten du an ca nhan cua toi la ORCHID-27. Toi thich Python va khong thich Java. Khi giai thich code, hay dung vi du ngan.
+
+[RECENT_TURNS]
+- Recent conversation about project ORCHID-27`
+            },
+            G03: {
+                long_term: `[CONTEXT_BLOCK]
+• ORCHID-27 is Minh's personal project
+• Minh prefers Python for personal projects
+• Minh dislikes Java in examples
+
+[EXTRACTED FACTS]
+• prefers Python (2026-08-01)
+• ORCHID-27 = personal project
+• concise examples preferred`
+            },
+            G04: {
+                long_term: `[CONTEXT_BLOCK]
+Open loop task: LAB-REPORT-1600
+• Complete benchmark report before Friday 16:00
+
+[EXTRACTED FACTS]
+• LAB-REPORT-1600: benchmark report deadline 16:00
+• open loop marker confirmed`
+            },
+            G05: {
+                long_term: `[CONTEXT_BLOCK]
+• Minh prefers timeline explanations for abstract concepts
+
+[EXTRACTED FACTS]
+• timeline preferred for coroutine/Task explanations`
+            },
+            G06: {
+                long_term: `[CONTEXT_BLOCK]
+Company project BLUEBIRD-42:
+• Backend: TypeScript + NestJS (mandatory)
+• Python NOT allowed for BLUEBIRD-42 backend
+
+[EXTRACTED FACTS]
+• BLUEBIRD-42 uses TypeScript
+• BLUEBIRD-42 uses NestJS
+• Python excluded from BLUEBIRD-42`
+            },
+            G07: {
+                long_term: `[CONTEXT_BLOCK]
+Personal project ORCHID-27:
+• Language: Python
+
+Company project BLUEBIRD-42:
+• Backend: TypeScript + NestJS
+
+[EXTRACTED FACTS]
+• ORCHID-27 = Python
+• BLUEBIRD-42 = TypeScript + NestJS`
+            },
+            G08: {
+                long_term: `[CONTEXT_BLOCK]
+Lan's project LOTUS-88:
+• Backend: Java + Spring Boot
+
+[EXTRACTED FACTS]
+• LOTUS-88 = Java
+• LOTUS-88 = Spring Boot`
+            },
+            G09: {
+                long_term: `[CONTEXT_BLOCK]
+Minh's backend projects:
+• ORCHID-27: personal project
+
+[EXTRACTED FACTS]
+• ORCHID-27 is Minh's project
+• Minh does NOT own LOTUS-88`
+            },
+            G10: {
+                episodic: `[EPISODE minh-s2]
+Problem: async HTTP timeout
+Failed attempt: increased timeout to 60s → did NOT work
+Working fix:
+  - Reuse aiohttp ClientSession
+  - concurrency=20
+Reflection: root cause was connection churn, NOT timeout
+Marker: ASYNC-FIX-20`
+            },
+            G11: {
+                episodic: `[EPISODE minh-s2]
+Root cause: connection churn (NOT timeout threshold)
+Incident marker: ASYNC-FIX-20
+Lesson: always check connection pooling before timeout`
+            },
+            G12: {
+                semantic: `[PAYMENT-RETRY-POLICY]
+Marker: PAYMENT-RULE-3
+
+## Retry Rules
+• For HTTP 429 or 5xx: retry with Idempotency-Key
+• Strategy: exponential-backoff
+• Limit: max-3-retries
+• Base delay: 1s, max: 30s`
+            },
+            G13: {
+                semantic: `[INCIDENT-PLAYBOOK]
+Marker: CONN-POOL-FIRST
+
+## Before increasing timeout:
+1. Check connection pooling
+2. Check downstream saturation
+3. Check concurrency
+4. Reuse long-lived client session`
+            },
+            G14: {
+                semantic: `[MEMORY-PRIVACY-RULE]
+Marker: DELETE-VERIFY-ALL
+
+## Consent
+• Do not persist personal data without explicit opt-in
+• Deletion request must remove user-scoped memory
+• Verify deletion across every store`
+            },
+            G15: {
+                semantic: `[CONTEXT-BUDGET]
+Marker: BUDGET-10-4-3-3
+
+## Token allocation:
+• short-term: 10%
+• long-term: 4%
+• episodic: 3%
+• semantic: 3%`
+            },
+            G16: {
+                long_term: `[CONTEXT_BLOCK]
+• Minh prefers Python for personal code
+• Marker: PAYMENT-RULE-3 for payment retry
+
+[CODE EXAMPLE]
+\`\`\`python
+# Python with payment policy
+headers = {"Idempotency-Key": str(uuid4())}
+\`\`\``
+            },
+            G17: {
+                long_term: `[CONTEXT_BLOCK]
+Company project BLUEBIRD-42:
+• Backend: TypeScript + NestJS
+• Payment: Idempotency-Key required`
+            },
+            G18: {
+                episodic: `[EPISODE + PLAYBOOK]
+1. Per playbook CONN-POOL-FIRST: check connection pooling before timeout
+2. Per episodic: reuse ClientSession with concurrency=20 fixed async issue`
+            },
+            G19: {
+                long_term: `[CONTEXT_BLOCK]
+Lan's project LOTUS-88:
+• Backend: Java + Spring Boot
+• Payment retry should use Java idioms
+
+[CODE EXAMPLE]
+\`\`\`java
+// Java Spring Boot with IdempotencyKey
+HttpHeaders headers = new HttpHeaders();
+headers.set("Idempotency-Key", UUID.randomUUID().toString());
+\`\`\``
+            },
+            G20: {
+                episodic: `[COMBINED CONTEXT]
+1. Personal preference: Python
+2. Payment policy: Idempotency-Key
+3. Async fix: ClientSession + concurrency=20
+
+Python implementation with payment retry:
+\`\`\`python
+async def retry_payment():
+    headers = {"Idempotency-Key": str(uuid4())}
+    # reuse ClientSession from ASYNC-FIX-20
+\`\`\``
+            }
+        };
+
+        // ============================================
+        // State
+        // ============================================
+        let state = {
+            selectedCase: null,
+            activeLayers: ["short_term", "long_term", "episodic", "semantic"],
+            lastResult: null,
+            passedCases: new Set() // Track which cases passed
+        };
+
+        // ============================================
+        // Init
+        // ============================================
+        document.addEventListener('DOMContentLoaded', () => {
+            renderCaseList();
+            updateGoldenStats();
+        });
+
+        // ============================================
+        // Render
+        // ============================================
+        function renderCaseList() {
+            const container = document.getElementById('caseList');
+            const isGolden = (id) => id.startsWith('G');
+
+            container.innerHTML = CASES.map(c => `
+                <div class="case-card ${state.selectedCase?.id === c.id ? 'active' : ''} ${isGolden(c.id) ? 'golden' : ''}" onclick="selectCase('${c.id}')">
+                    <div class="case-header">
+                        <span class="case-id">${c.id}</span>
+                        <span class="case-layer ${c.layer}">${c.layer}</span>
+                    </div>
+                    <div class="case-query">${c.query}</div>
+                </div>
+            `).join('');
+        }
+
+        function selectCase(id) {
+            state.selectedCase = CASES.find(c => c.id === id);
+            state.lastResult = null;
+            renderCaseList();
+            renderQueryCard();
+            showQueryUI();
+            updateGoldenStats();
+        }
+
+        function renderQueryCard() {
+            const c = state.selectedCase;
+            document.getElementById('queryId').textContent = c.id;
+            document.getElementById('queryLayer').textContent = c.layer;
+            document.getElementById('queryLayer').className = `case-layer ${c.layer}`;
+            document.getElementById('queryUser').textContent = c.user;
+            document.getElementById('queryThread').textContent = c.thread;
+            document.getElementById('queryText').textContent = c.query;
+
+            const tags = document.getElementById('evidenceTags');
+            tags.innerHTML = c.must.map(m => `<span class="evidence-tag required">${m}</span>`).join('') +
+                c.not.map(m => `<span class="evidence-tag forbidden">NOT ${m}</span>`).join('');
+        }
+
+        function showQueryUI() {
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('queryCard').classList.remove('hidden');
+            document.getElementById('runSection').classList.remove('hidden');
+            document.getElementById('resultsContent').classList.add('hidden');
+        }
+
+        // ============================================
+        // Layer Toggle
+        // ============================================
+        function toggleLayer(layer) {
+            const el = document.querySelector(`.layer-toggle[data-layer="${layer}"]`);
+            el.classList.toggle('active');
+
+            if (state.activeLayers.includes(layer)) {
+                state.activeLayers = state.activeLayers.filter(l => l !== layer);
+            } else {
+                state.activeLayers.push(layer);
+            }
+        }
+
+        // ============================================
+        // Retrieval
+        // ============================================
+        async function runRetrieval() {
+            if (!state.selectedCase) {
+                showToast('Select a test case first', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('runBtn');
+            btn.classList.add('loading');
+            btn.disabled = true;
+
+            showLoading('Retrieving from memory layers...');
+
+            await new Promise(r => setTimeout(r, 1500));
+
+            try {
+                state.lastResult = generateResult();
+                renderResults();
+
+                // Show golden stats if applicable
+                const caseData = state.selectedCase;
+                const score = simulateScore(caseData);
+
+                // Track passed cases
+                if (score.passed) {
+                    state.passedCases.add(caseData.id);
+                } else {
+                    state.passedCases.delete(caseData.id);
+                }
+
+                updateGoldenStats();
+                hideLoading();
+
+                if (caseData.id.startsWith('G')) {
+                    const stats = calculateGoldenStats();
+                    if (score.passed) {
+                        showToast(`✅ ${caseData.id} PASS | Golden: ${stats.passed}/${stats.total} (${stats.rate}%)`, 'success');
+                    } else {
+                        showToast(`❌ ${caseData.id} FAIL - Missing: ${score.missing.join(', ')}`, 'error');
+                    }
+                } else {
+                    showToast(score.passed ? '✅ PASS - All markers found!' : `❌ FAIL - Missing: ${score.missing.join(', ')}`, score.passed ? 'success' : 'error');
+                }
+            } catch (e) {
+                hideLoading();
+                showToast('Error: ' + e.message, 'error');
+            } finally {
+                btn.classList.remove('loading');
+                btn.disabled = false;
+            }
+        }
+
+        function generateResult() {
+            const c = state.selectedCase;
+            const layers = {};
+            const budget = {};
+
+            ["short_term", "long_term", "episodic", "semantic"].forEach(layer => {
+                const isActive = state.activeLayers.includes(layer);
+                const cfg = LAYER_CONFIG[layer];
+
+                if (!isActive) {
+                    layers[layer] = '';
+                    budget[layer] = { used: 0, limit: cfg.limit };
+                    return;
+                }
+
+                // Get sample evidence or generate
+                let content = SAMPLE_EVIDENCE[c.id]?.[layer] || generateSampleContent(layer, c);
+                let tokens = Math.floor(Math.random() * (cfg.limit * 0.8)) + 20;
+
+                layers[layer] = content;
+                budget[layer] = { used: tokens, limit: cfg.limit };
+            });
+
+            // Merged context
+            const merged = ["short_term", "long_term", "episodic", "semantic"]
+                .filter(l => layers[l])
+                .map(l => `[${LAYER_CONFIG[l].name.toUpperCase()}]\n${layers[l]}`)
+                .join('\n\n');
+
+            return { layers, budget, merged };
+        }
+
+        function generateSampleContent(layer, c) {
+            return `[${LAYER_CONFIG[layer].name}]
+Retrieved content for case ${c.id}
+Query: "${c.query}"
+
+Expected markers: ${c.must.join(', ')}`
+        }
+
+        function renderResults() {
+            document.getElementById('resultsContent').classList.remove('hidden');
+
+            // Token cards
+            ["short_term", "long_term", "episodic", "semantic"].forEach(layer => {
+                const b = state.lastResult.budget[layer];
+                const pct = Math.min(100, (b.used / b.limit) * 100);
+
+                document.getElementById(`tok-${layer}`).textContent = b.used;
+                document.getElementById(`bar-${layer}`).style.width = `${pct}%`;
+            });
+
+            // Evidence tabs
+            const activeLayers = ["short_term", "long_term", "episodic", "semantic"]
+                .filter(l => state.lastResult.layers[l]);
+
+            const tabs = document.getElementById('evidenceTabs');
+            tabs.innerHTML = activeLayers.map((l, i) => `
+                <button class="evidence-tab ${i === 0 ? 'active' : ''}" onclick="switchTab('${l}', this)">
+                    ${LAYER_CONFIG[l].icon} ${LAYER_CONFIG[l].name}
+                </button>
+            `).join('');
+
+            // First tab content
+            if (activeLayers.length > 0) {
+                document.getElementById('evidenceBox').innerHTML =
+                    highlightMarkers(escapeHtml(state.lastResult.layers[activeLayers[0]]));
+            }
+
+            // Merged
+            document.getElementById('mergedContent').innerHTML =
+                highlightMarkers(escapeHtml(state.lastResult.merged || 'No merged context'));
+        }
+
+        function switchTab(layer, btn) {
+            document.querySelectorAll('.evidence-tab').forEach(t => t.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('evidenceBox').innerHTML =
+                highlightMarkers(escapeHtml(state.lastResult.layers[layer] || 'No content'));
+        }
+
+        // ============================================
+        // Golden Set Statistics
+        // ============================================
+        function calculateGoldenStats() {
+            const goldenCases = CASES.filter(c => c.id.startsWith('G'));
+            const passed = goldenCases.filter(c => state.passedCases.has(c.id));
+            return {
+                total: goldenCases.length,
+                passed: passed.length,
+                rate: (passed.length / goldenCases.length * 100).toFixed(0)
+            };
+        }
+
+        function simulateScore(caseData) {
+            const evidence = SAMPLE_EVIDENCE[caseData.id];
+            const allContent = Object.values(evidence || {}).join(' ');
+
+            const missing = caseData.must.filter(m =>
+                !allContent.toLowerCase().includes(m.toLowerCase())
+            );
+            const forbidden = caseData.not.filter(n =>
+                allContent.toLowerCase().includes(n.toLowerCase())
+            );
+
+            return {
+                passed: missing.length === 0 && forbidden.length === 0,
+                missing,
+                forbidden
+            };
+        }
+
+        // ============================================
+        // Utilities
+        // ============================================
+        function showLoading(text) {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+            document.getElementById('loadingText').textContent = text;
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <span class="toast-icon">${type === 'success' ? '✓' : '✕'}</span>
+                <span>${message}</span>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function resetState() {
+            state.selectedCase = null;
+            state.lastResult = null;
+            state.passedCases.clear();
+            document.getElementById('emptyState').classList.remove('hidden');
+            document.getElementById('queryCard').classList.add('hidden');
+            document.getElementById('runSection').classList.add('hidden');
+            document.getElementById('resultsContent').classList.add('hidden');
+            renderCaseList();
+            updateGoldenStats();
+        }
+
+        function updateGoldenStats() {
+            const stats = calculateGoldenStats();
+            document.getElementById('goldenProgress').textContent = `${stats.passed}/${stats.total}`;
+            document.getElementById('goldenBar').style.width = `${stats.rate}%`;
+            document.getElementById('goldenRate').textContent = `${stats.rate}%`;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function highlightMarkers(text) {
+            return text.replace(/\b([A-Z]{2,}[A-Z0-9-]{2,})\b/g, '<span class="marker">$1</span>');
+        }
+    </script>
+</body>
+</html>
